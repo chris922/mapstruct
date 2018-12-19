@@ -136,7 +136,9 @@ class EclipseCompilingStatement extends CompilingStatement {
                 "tycho-compiler",
                 "org.eclipse.jdt.",
                 "plexus-compiler-api",
-                "plexus-component-annotations" };
+                "plexus-component-annotations",
+                "ecj"
+        };
 
         return filterBootClassPath( whitelist );
     }
