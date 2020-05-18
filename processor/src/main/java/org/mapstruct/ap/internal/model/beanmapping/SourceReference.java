@@ -5,16 +5,23 @@
  */
 package org.mapstruct.ap.internal.model.beanmapping;
 
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.ExecutableType;
+import javax.lang.model.util.Types;
 
+import org.apache.commons.exec.util.StringUtils;
 import org.mapstruct.ap.internal.model.common.Parameter;
 import org.mapstruct.ap.internal.model.common.Type;
 import org.mapstruct.ap.internal.model.common.TypeFactory;
@@ -59,6 +66,7 @@ public class SourceReference extends AbstractReference {
 
         private Method method;
         private FormattingMessager messager = null;
+        private Types typeUtils = null;
         private TypeFactory typeFactory;
 
         private boolean isForwarded = false;
@@ -69,6 +77,11 @@ public class SourceReference extends AbstractReference {
 
         public BuilderFromMapping messager(FormattingMessager messager) {
             this.messager = messager;
+            return this;
+        }
+
+        public BuilderFromMapping typeUtils(Types typeUtils) {
+            this.typeUtils = typeUtils;
             return this;
         }
 
@@ -105,6 +118,7 @@ public class SourceReference extends AbstractReference {
             }
 
             Objects.requireNonNull( messager );
+            Objects.requireNonNull( typeUtils );
 
             String sourceNameTrimmed = sourceName.trim();
             if ( !sourceName.equals( sourceNameTrimmed ) ) {
@@ -118,18 +132,38 @@ public class SourceReference extends AbstractReference {
                 );
             }
 
-            String[] segments = sourceNameTrimmed.split( "\\." );
+            List<String> segmentsList = new ArrayList<>();
+
+            Pattern PATTERN_SEGMENT_LIST_INDEX = Pattern.compile( "(.*)(\\[[0-9]+\\])$" );
+
+            // first split by dot: .
+            String[] segmentsByDots = sourceNameTrimmed.split( "\\." );
+            for ( String segment : segmentsByDots ) {
+                // then verify each segment if it ends with the indexing pattern: segment[i]
+                Matcher matcher = PATTERN_SEGMENT_LIST_INDEX.matcher( segment );
+                if ( matcher.matches() ) {
+                    segmentsList.add( matcher.group( 1 ) );
+                    segmentsList.add( matcher.group( 2 ) );
+                }
+                else {
+                    segmentsList.add( segment );
+                }
+            }
+
+            String[] segments = segmentsList.toArray( new String[0] );
 
             // start with an invalid source reference
             SourceReference result = new SourceReference( null, new ArrayList<>(  ), false );
             if ( method.getSourceParameters().size() > 1 ) {
                 Parameter parameter = fetchMatchingParameterFromFirstSegment( segments );
                 if ( parameter != null ) {
+                    // TODO cbandows
                     result = buildFromMultipleSourceParameters( segments, parameter );
                 }
             }
             else {
                 Parameter parameter = method.getSourceParameters().get( 0 );
+                // TODO cbanodows
                 result = buildFromSingleSourceParameters( segments, parameter );
             }
             return result;
@@ -284,25 +318,54 @@ public class SourceReference extends AbstractReference {
             Type newType = type;
             for ( int i = 0; i < entryNames.length; i++ ) {
                 boolean matchFound = false;
-                Map<String, Accessor> sourceReadAccessors = newType.getPropertyReadAccessors();
-                Map<String, Accessor> sourcePresenceCheckers = newType.getPropertyPresenceCheckers();
+                String entryName = entryNames[i];
 
-                for ( Map.Entry<String, Accessor> getter : sourceReadAccessors.entrySet() ) {
-                    if ( getter.getKey().equals( entryNames[i] ) ) {
-                        newType = typeFactory.getReturnType(
-                            (DeclaredType) newType.getTypeMirror(),
-                            getter.getValue()
-                        );
+                if ( entryName.startsWith( "[" ) && entryName.endsWith( "]" ) ) {
+                    // list index, newType must be a list
+                    Type listType =  typeFactory.getType( List.class.getName() );
+                    if( typeUtils.isAssignable( listType.getTypeMirror(), newType.erasure().getTypeMirror() ) ) {
+                        Accessor getter = newType.getPropertyReadAccessor( "get", int.class.getName() );
+                        Accessor presenceChecker = newType.getPropertyPresenceChecker( "size"  );
+
+                        Objects.requireNonNull( getter,
+                            "Type " + newType.toString() + " is a List and therefore should always have a " +
+                                "method get(int), but this is not the case" );
+
+                        newType = typeFactory.getReturnType( (DeclaredType) newType.getTypeMirror(), getter);
                         sourceEntries.add( forSourceReference(
                             Arrays.copyOf( entryNames, i + 1 ),
-                            getter.getValue(),
-                            sourcePresenceCheckers.get( entryNames[i] ),
+                            getter,
+                            presenceChecker,
                             newType
                         ) );
                         matchFound = true;
-                        break;
+                    }
+                    else {
+                        // TODO cbandows: report error, list index tried but not a list was given
                     }
                 }
+                else {
+                    Map<String, Accessor> sourceReadAccessors = newType.getPropertyReadAccessors();
+                    Map<String, Accessor> sourcePresenceCheckers = newType.getPropertyPresenceCheckers();
+
+                    for ( Map.Entry<String, Accessor> getter : sourceReadAccessors.entrySet() ) {
+                        if ( getter.getKey().equals( entryName ) ) {
+                            newType = typeFactory.getReturnType(
+                                (DeclaredType) newType.getTypeMirror(),
+                                getter.getValue()
+                            );
+                            sourceEntries.add( forSourceReference(
+                                Arrays.copyOf( entryNames, i + 1 ),
+                                getter.getValue(),
+                                sourcePresenceCheckers.get( entryName ),
+                                newType
+                            ) );
+                            matchFound = true;
+                            break;
+                        }
+                    }
+                }
+
                 if ( !matchFound ) {
                     break;
                 }

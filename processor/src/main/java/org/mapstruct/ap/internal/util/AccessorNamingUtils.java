@@ -45,7 +45,7 @@ public final class AccessorNamingUtils {
             && isPublicNotStatic( executable )
             && executable.getParameters().isEmpty()
             && ( executable.getReturnType().getKind() == TypeKind.BOOLEAN ||
-            "java.lang.Boolean".equals( getQualifiedName( executable.getReturnType() ) ) )
+            "java.lang.Boolean".equals( TypeUtils.getQualifiedName( executable.getReturnType() ) ) )
             && accessorNamingStrategy.getMethodType( executable ) == MethodType.PRESENCE_CHECKER;
     }
 
@@ -80,33 +80,5 @@ public final class AccessorNamingUtils {
         else {
             return null;
         }
-    }
-
-    private static String getQualifiedName(TypeMirror type) {
-        DeclaredType declaredType = type.accept(
-            new SimpleTypeVisitor6<DeclaredType, Void>() {
-                @Override
-                public DeclaredType visitDeclared(DeclaredType t, Void p) {
-                    return t;
-                }
-            },
-            null
-        );
-
-        if ( declaredType == null ) {
-            return null;
-        }
-
-        TypeElement typeElement = declaredType.asElement().accept(
-            new SimpleElementVisitor6<TypeElement, Void>() {
-                @Override
-                public TypeElement visitType(TypeElement e, Void p) {
-                    return e;
-                }
-            },
-            null
-        );
-
-        return typeElement != null ? typeElement.getQualifiedName().toString() : null;
     }
 }

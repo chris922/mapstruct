@@ -40,6 +40,9 @@ import org.mapstruct.ap.internal.util.accessor.Accessor;
 import org.mapstruct.ap.internal.util.accessor.AccessorType;
 
 import static org.mapstruct.ap.internal.util.Collections.first;
+import static org.mapstruct.ap.internal.util.accessor.AccessorType.GETTER;
+import static org.mapstruct.ap.internal.util.accessor.AccessorType.PRESENCE_CHECKER;
+
 import org.mapstruct.ap.internal.util.NativeTypes;
 
 /**
@@ -521,6 +524,16 @@ public class Type extends ModelElement implements Comparable<Type> {
         return readAccessors;
     }
 
+    // TODO: cbandows javadoc
+    public Accessor getPropertyReadAccessor(String methodName, String... paramTypes) {
+        return filters.methodIn( getAllMethods(), GETTER, methodName, paramTypes );
+    }
+
+    // TODO: cbandows javadoc
+    public Accessor getPropertyPresenceChecker(String methodName, String... paramTypes) {
+        return filters.methodIn( getAllMethods(), PRESENCE_CHECKER, methodName, paramTypes );
+    }
+
     /**
      * getPropertyPresenceCheckers
      *
@@ -580,7 +593,7 @@ public class Type extends ModelElement implements Comparable<Type> {
                     && cmStrategy == CollectionMappingStrategyGem.ADDER_PREFERRED ) {
                     adderMethod = getAdderForType( targetType, targetPropertyName );
                 }
-                else if ( candidate.getAccessorType() == AccessorType.GETTER ) {
+                else if ( candidate.getAccessorType() == GETTER ) {
                     // the current accessor is a getter (no setter available). But still, an add method is according
                     // to the above strategy (SETTER_PREFERRED || ADDER_PREFERRED) preferred over the getter.
                     adderMethod = getAdderForType( targetType, targetPropertyName );
@@ -626,7 +639,7 @@ public class Type extends ModelElement implements Comparable<Type> {
         if ( parameter != null ) {
             return parameter.getType();
         }
-        else if ( candidate.getAccessorType() == AccessorType.GETTER
+        else if ( candidate.getAccessorType() == GETTER
                         || candidate.getAccessorType().isFieldAssignment() ) {
             return typeFactory.getReturnType( (DeclaredType) typeMirror, candidate );
         }

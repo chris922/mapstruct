@@ -329,6 +329,7 @@ public class BeanMappingMethod extends NormalTypeMappingMethod {
                     resultTypeToMap,
                     readAndWriteTargetProperties,
                     ctx.getMessager(),
+                    ctx.getTypeUtils(),
                     ctx.getTypeFactory()
                 );
             }

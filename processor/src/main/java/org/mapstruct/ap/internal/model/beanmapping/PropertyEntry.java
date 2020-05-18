@@ -94,6 +94,8 @@ public class PropertyEntry {
 
     @Override
     public String toString() {
-        return type + " " + Strings.join( Arrays.asList( fullName ), "." );
+        return type + " " + Strings.join( Arrays.asList( fullName ), "." )
+            .replace( ".[", "[" ) // support list index
+            ;
     }
 }

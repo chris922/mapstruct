@@ -11,6 +11,8 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
+import javax.lang.model.util.Types;
+
 import org.mapstruct.ap.internal.model.common.Type;
 import org.mapstruct.ap.internal.model.common.TypeFactory;
 import org.mapstruct.ap.internal.model.source.MappingOptions;
@@ -34,6 +36,7 @@ public class MappingReferences {
         Type targetType,
         Set<String> targetProperties,
         FormattingMessager messager,
+        Types typeUtils,
         TypeFactory typeFactory) {
 
         Set<MappingReference> references = new LinkedHashSet<>();
@@ -45,6 +48,7 @@ public class MappingReferences {
             SourceReference sourceReference = new SourceReference.BuilderFromMapping().mapping( mapping )
                                                                                       .method( sourceMethod )
                                                                                       .messager( messager )
+                                                                                      .typeUtils( typeUtils )
                                                                                       .typeFactory( typeFactory )
                                                                                       .build();
 

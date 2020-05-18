@@ -17,6 +17,7 @@ import javax.lang.model.util.SimpleElementVisitor6;
 import javax.lang.model.util.SimpleTypeVisitor6;
 import javax.lang.model.util.Types;
 
+import org.mapstruct.ap.internal.util.TypeUtils;
 import org.mapstruct.ap.spi.util.IntrospectorUtils;
 
 /**
@@ -81,7 +82,7 @@ public class DefaultAccessorNamingStrategy implements AccessorNamingStrategy {
 
         boolean isBooleanGetterName = methodName.startsWith( "is" ) && methodName.length() > 2;
         boolean returnTypeIsBoolean = method.getReturnType().getKind() == TypeKind.BOOLEAN ||
-            "java.lang.Boolean".equals( getQualifiedName( method.getReturnType() ) );
+            "java.lang.Boolean".equals( TypeUtils.getQualifiedName( method.getReturnType() ) );
 
         return isNonBooleanGetterName || ( isBooleanGetterName && returnTypeIsBoolean );
     }
@@ -203,41 +204,6 @@ public class DefaultAccessorNamingStrategy implements AccessorNamingStrategy {
     public String getElementName(ExecutableElement adderMethod) {
         String methodName = adderMethod.getSimpleName().toString();
         return IntrospectorUtils.decapitalize( methodName.substring( 3 ) );
-    }
-
-    /**
-     * Helper method, to obtain the fully qualified name of a type.
-     *
-     * @param type input type
-     *
-     * @return fully qualified name of type when the type is a {@link DeclaredType}, null when otherwise.
-     */
-    protected static String getQualifiedName(TypeMirror type) {
-        DeclaredType declaredType = type.accept(
-            new SimpleTypeVisitor6<DeclaredType, Void>() {
-                @Override
-                public DeclaredType visitDeclared(DeclaredType t, Void p) {
-                    return t;
-                }
-            },
-            null
-        );
-
-        if ( declaredType == null ) {
-            return null;
-        }
-
-        TypeElement typeElement = declaredType.asElement().accept(
-            new SimpleElementVisitor6<TypeElement, Void>() {
-                @Override
-                public TypeElement visitType(TypeElement e, Void p) {
-                    return e;
-                }
-            },
-            null
-        );
-
-        return typeElement != null ? typeElement.getQualifiedName().toString() : null;
     }
 
     @Override

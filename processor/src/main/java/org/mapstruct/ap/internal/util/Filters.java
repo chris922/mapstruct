@@ -7,6 +7,7 @@ package org.mapstruct.ap.internal.util;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
@@ -23,6 +24,7 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Types;
 
 import org.mapstruct.ap.internal.util.accessor.Accessor;
+import org.mapstruct.ap.internal.util.accessor.AccessorType;
 import org.mapstruct.ap.internal.util.accessor.ExecutableElementAccessor;
 import org.mapstruct.ap.internal.util.accessor.FieldElementAccessor;
 
@@ -74,6 +76,20 @@ public class Filters {
             .filter( accessorNaming::isGetterMethod )
             .map( method ->  new ExecutableElementAccessor( method, getReturnType( method ), GETTER ) )
             .collect( Collectors.toCollection( LinkedList::new ) );
+    }
+
+    public Accessor methodIn(List<ExecutableElement> elements, AccessorType accessorType, String methodName,
+                             String... paramTypes) {
+        return elements.stream()
+            .filter( el -> el.getSimpleName().contentEquals( methodName ) )
+            .filter( el -> el.getParameters().stream()
+                .map( param -> TypeUtils.getQualifiedName( param.asType() ) )
+                .collect( Collectors.toList() )
+                .equals( Arrays.asList( paramTypes ) )
+            )
+            .findFirst()
+            .map( el -> new ExecutableElementAccessor( el, getReturnType( el ), accessorType ) )
+            .orElse( null );
     }
 
     @SuppressWarnings("unchecked")
